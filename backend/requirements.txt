@@ -1,0 +1,6 @@
+fastapi==0.119.0
+uvicorn==0.37.0
+SQLAlchemy==2.0.44
+psycopg2-binary==2.9.11
+dotenv==0.9.9
+langchain-openai==0.3.35

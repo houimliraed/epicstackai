@@ -1,0 +1,57 @@
+# Byte-compiled / optimized / DLL files
+backend/app/__pycache__/
+backend/app/*.py[cod]
+backend/app/*$py.class
+
+# C extensions
+backend/app/*.so
+
+# packaging
+backend/build/
+backend/dist/
+backend/*.egg-info/
+
+# Installer logs
+backend/pip-log.txt
+backend/pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+backend/.tox/
+backend/.nox/
+backend/.coverage
+backend/.coverage.*
+backend/htmlcov/
+backend/.hypothesis/
+
+# Jupyter Notebook checkpoints
+backend/.ipynb_checkpoints
+
+# env / virtualenv
+*.env
+venv
+.venv
+backend/venv/
+backend/.venv/
+backend/env/
+backend/*.env
+
+# mypy
+backend/.mypy_cache/
+backend/dmypy.json
+
+# IDEs
+backend/.vscode/
+backend/.idea/
+backend/*.sublime-project
+backend/*.sublime-workspace
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+backend/*.log
+
+# Docker overrides
+docker-compose.override.yml
+
