@@ -4,7 +4,7 @@ on:
     workflow_call:
 jobs:
     react:
-        name: React testing and linting
+        name: React test-lint
         runs-on: ubuntu-latest
         steps:
             - name: Code checkout
@@ -19,6 +19,23 @@ jobs:
             - name: lint
               working-directory: frontend
               run: npm run lint
+    terraform:
+          name: terraform
+          runs-on: ubuntu-latest
+          steps:
+            - name: checkout
+              uses: actions/checkout@v6
+            - name: terraform lint
+              run: |
+                cd infra/
+                docker compose run --rm terraform -chdir=deploy init -backend=false
+                docker compose run --rm terraform -chdir=setup init -backend=false
+                docker compose run --rm terraform -chdir=deploy validate
+                docker compose run --rm terraform -chdir=setup validate
+                docker compose run --rm terraform -chdir=deploy fmt -check
+                docker compose run --rm terraform -chdir=setup fmt -check
+
+      
               
 
 
