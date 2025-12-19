@@ -32,7 +32,9 @@ jobs:
               run: |
                 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
                 docker build -t ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA frontend/
+                docker build -t ${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA backend/
                 docker push ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA 
+                docker push ${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA 
 
             - name: Terraform Apply
               env:
@@ -40,6 +42,7 @@ jobs:
                 AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
               run: |
                 export TF_VAR_ecr_front_image="${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA"
+                export TF_VAR_ecr_front_image="${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA"
                 workspace=$(cat .workspace)
                 cd infra/
                 docker compose run --rm terraform -chdir=deploy/ init 
