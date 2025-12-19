@@ -40,7 +40,7 @@ jobs:
                 AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
               run: |
                 export TF_VAR_ecr_front_image="${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA"
-                workspace = ${cat .workspace}
+                workspace=$(cat .workspace)
                 cd infra/
                 docker compose run --rm terraform -chdir=deploy/ init 
                 docker compose run --rm terraform -chdir=deploy/ workspace select -or-create $workspace
