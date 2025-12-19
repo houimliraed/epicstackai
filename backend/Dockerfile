@@ -1,37 +1,23 @@
-# stage one 
-
+# Stage 1: Builder
 FROM python:3.13-slim AS builder
 
-WORKDIR  /app
-
-
+WORKDIR /app
 COPY requirements.txt tmp/
 
-
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev && \
-    pip install --upgrade pip && \
-    pip install --no-cache-dir -r tmp/requirements.txt && \
+    python -m venv /opt/venv && \
+    /opt/venv/bin/pip install --upgrade pip wheel && \
+    /opt/venv/bin/pip install --no-cache-dir -r tmp/requirements.txt && \
     apt-get purge -y --auto-remove build-essential && \
-    rm -rf var/lib/apt/lists/* tmp /root/.cache
+    rm -rf /var/lib/apt/lists/* tmp /root/.cache
 
-# stage two 
-
+# Stage 2: Runner
 FROM python:3.13-slim AS runner
-
-COPY --from=builder /usr/local/lib/python3.13 /usr/local/lib/python3.13
-COPY --from=builder /usr/local/bin /usr/local/bin
-
+WORKDIR /app
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 COPY . .
+ENV PYTHONPATH=/app
+EXPOSE 8001
 
-EXPOSE 6000
-
-CMD [ "uvicorn","app.main:app","--host","0.0.0.0","--port","8001" ]
-
-
-
-
-
-
-
-
-
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]

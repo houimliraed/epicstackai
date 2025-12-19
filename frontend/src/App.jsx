@@ -1,14 +1,23 @@
-import './App.css'
+import React from "react";
+import ReservationForm from "./components/ReservationForm";
+import ReservationList from "./components/ReservationList";
+import './index.css';
 
-function App() {
-
+const App = () => {
   return (
-    <>
-    <p>
-      Hello there !
-    </p>
-    </>
-  )
-}
+    <div className="container">
+      <h1>Hotel Reservation System</h1>
 
-export default App
+      <div className="form-card">
+        <h2>Create Reservation</h2>
+        <ReservationForm />
+      </div>
+
+      <div className="table-card">
+        <ReservationList />
+      </div>
+    </div>
+  );
+};
+
+export default App;

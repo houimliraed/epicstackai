@@ -1,13 +1,13 @@
-version: '3.8'
-
 services:
   backend:
     build:
       context: ./backend
     ports:
       - "8001:8001"
-    environment:
-      - DATABASE_URL=postgresql://user:password@postgres:5432/mydatabase
+    env_file:
+      - ./backend/app/.env
+    volumes:
+      - ./backend:/app
     depends_on:
       - postgres
 
@@ -15,7 +15,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "3000:80"
+      - "3000:80"   # host 3000 → container 80
     depends_on:
       - backend
 
