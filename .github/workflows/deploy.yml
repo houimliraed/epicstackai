@@ -46,21 +46,21 @@ jobs:
                 docker compose run --rm terraform -chdir=deploy/ workspace select -or-create $workspace
                 docker compose run --rm terraform -chdir=deploy/ apply -auto-approve
             
-            - name: Deploy Frontend to S3
-              env:
-               AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
-               AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-               AWS_DEFAULT_REGION: us-east-1
-              run: |
-                WORKSPACE=$(cat .workspace)
-                if [ "$WORKSPACE" = "prod" ]; then
-                  BUCKET="epicstack-front"
-                else
-                  BUCKET="epicstack-front-staging"
-                fi
+            # - name: Deploy Frontend to S3
+            #   env:
+            #    AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+            #    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            #    AWS_DEFAULT_REGION: us-east-1
+            #   run: |
+            #     WORKSPACE=$(cat .workspace)
+            #     if [ "$WORKSPACE" = "prod" ]; then
+            #       BUCKET="epicstack-front"
+            #     else
+            #       BUCKET="epicstack-front-staging"
+            #     fi
 
-                echo "Deploying frontend to $BUCKET..."
-                aws s3 sync frontend/build s3://$BUCKET --delete
+            #     echo "Deploying frontend to $BUCKET..."
+            #     aws s3 sync frontend/build s3://$BUCKET --delete
 
 
               
