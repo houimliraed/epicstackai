@@ -1,6 +1,6 @@
 
 
-resource "aws_s3_bucket" "epicstack-front" {
+resource "aws_s3_bucket" "epicstack_front" {
     bucket = "epicstack-front"
 
     tags = {
