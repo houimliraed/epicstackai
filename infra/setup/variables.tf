@@ -10,3 +10,7 @@ variable "Contact" {
   description = "Contact info for tagging resouces"
   default     = "houimliraed@engineergrid.com"
 }
+variable "frontend_bucket_arn" {
+  description = "ARN of the frontend S3 bucket"
+  type        = string
+}

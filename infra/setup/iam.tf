@@ -156,8 +156,8 @@ data "aws_iam_policy_document" "s3_cloudfront" {
       "s3:ListBucket"
     ]
     resources = [
-      aws_s3_bucket.epicstack-front.arn,        # bucket itself
-      "${aws_s3_bucket.epicstack-front.arn}/*" # all objects
+  var.frontend_bucket_arn,
+  "${var.frontend_bucket_arn}/*"
     ]
   }
 
