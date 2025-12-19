@@ -156,8 +156,8 @@ data "aws_iam_policy_document" "s3_cloudfront" {
       "s3:ListBucket"
     ]
     resources = [
-  var.frontend_bucket_arn,
-  "${var.frontend_bucket_arn}/*"
+      "arn:aws:s3:::YOUR_BUCKET_NAME",
+      "arn:aws:s3:::YOUR_BUCKET_NAME/*"
     ]
   }
 
