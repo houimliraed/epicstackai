@@ -10,7 +10,7 @@ on:
 
 jobs:
     Test-Lint:
-        uses: ./.github/workflows/Test-lint.yml
+        uses: ./.github/workflows/Test-Lint.yml
     Deploy:
         name: deploy
         runs-on: ubuntu-latest
