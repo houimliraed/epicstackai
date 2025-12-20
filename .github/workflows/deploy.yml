@@ -53,7 +53,7 @@ jobs:
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-            -e TF_WORKSPACE=$workspace \
+
             terraform -chdir=deploy/ init
 
           # Select or create workspace
@@ -61,7 +61,7 @@ jobs:
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-            -e TF_WORKSPACE=$workspace \
+
             terraform -chdir=deploy/ workspace select -or-create $workspace
 
           # Apply infrastructure
@@ -69,7 +69,7 @@ jobs:
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-            -e TF_WORKSPACE=$workspace \
+
             terraform -chdir=deploy/ apply -auto-approve -input=false
       - name: Build Frontend
         run: |
@@ -93,7 +93,5 @@ jobs:
           fi
 
           echo "Deploying frontend to $BUCKET..."
-          cd frontend
-          npm install
-          npm run build
+          cd $GITHUB_WORKSPACE
           aws s3 sync frontend/dist s3://$BUCKET --delete
