@@ -11,6 +11,7 @@ jobs:
     uses: ./.github/workflows/Test-Lint.yml
 
   Deploy:
+    name: Deploy
     runs-on: ubuntu-latest
     needs: [Test-Lint]
     steps:
@@ -39,60 +40,59 @@ jobs:
           docker push ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA
           docker push ${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA
 
-      - name: Terraform Init, Workspace & Apply
+      - name: Terraform Init & Apply
         env:
           AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
         run: |
-          workspace=$(cat .workspace)
-          export TF_WORKSPACE=$workspace
+          workspace=$(cat .workspace || echo "staging")
+          echo "Using Terraform workspace: $workspace"
           cd infra/
 
+          # Terraform init
           docker compose run --rm \
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-            -e TF_WORKSPACE=$TF_WORKSPACE \
             terraform -chdir=deploy/ init
 
+          # Select or create workspace (do NOT override with TF_WORKSPACE env)
           docker compose run --rm \
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-            -e TF_WORKSPACE=$TF_WORKSPACE \
             terraform -chdir=deploy/ workspace select -or-create $workspace
 
+          # Apply infrastructure (pass workspace)
           docker compose run --rm \
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-            -e TF_WORKSPACE=$TF_WORKSPACE \
+            -e TF_WORKSPACE=$workspace \
             terraform -chdir=deploy/ apply -auto-approve -input=false
 
-      - name: Build Frontend
-        run: |
-          cd frontend
-          npm install
-          npm run build
-
-      - name: Deploy Frontend to S3
+      - name: Build & Deploy Frontend to S3
         env:
           AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          WORKSPACE=$(cat .workspace)
+          WORKSPACE=$(cat .workspace || echo "staging")
           echo "Deploying frontend for workspace: $WORKSPACE"
 
           cd frontend
-          if [ "$WORKSPACE" = "prod" ]; then
-            BUCKET="epicstack-front"
-          else
-            BUCKET="epicstack-front-staging"
-          fi
+          echo "Installing dependencies..."
+          npm install
+          echo "Building frontend..."
+          npm run build
 
           if [ -d dist ]; then
+            if [ "$WORKSPACE" = "prod" ]; then
+              BUCKET="epicstack-front"
+            else
+              BUCKET="epicstack-front-staging"
+            fi
             echo "Syncing dist to S3 bucket: $BUCKET"
             aws s3 sync dist s3://$BUCKET --delete
           else
