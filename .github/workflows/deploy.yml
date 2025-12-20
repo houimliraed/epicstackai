@@ -51,19 +51,19 @@ jobs:
                 docker compose run --rm \
                   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
                   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                  -e TF_VAR_DB_PASSWORD=${{ secrets.TF_VAR_DB_PASSWORD }} \
+                  -e TF_VAR_DB_PASSWORD="$TF_VAR_DB_PASSWORD" \
                   terraform -chdir=deploy/ init
 
                 docker compose run --rm \
                   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
                   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                  -e TF_VAR_DB_PASSWORD=${{ secrets.TF_VAR_DB_PASSWORD }} \
+                  -e TF_VAR_DB_PASSWORD="$TF_VAR_DB_PASSWORD" \
                   terraform -chdir=deploy/ workspace select -or-create $workspace
 
                 docker compose run --rm \
                   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
                   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                  -e TF_VAR_DB_PASSWORD=${{ secrets.TF_VAR_DB_PASSWORD }} \
+                  -e TF_VAR_DB_PASSWORD="$TF_VAR_DB_PASSWORD" \
                   terraform -chdir=deploy/ apply -auto-approve -input=false
             
             # - name: Deploy Frontend to S3
