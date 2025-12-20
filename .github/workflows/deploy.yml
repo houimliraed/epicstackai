@@ -71,7 +71,12 @@ jobs:
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
             -e TF_WORKSPACE=$workspace \
             terraform -chdir=deploy/ apply -auto-approve -input=false
-
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+ 
       # Optional: Deploy frontend to S3
       - name: Deploy Frontend to S3
         if: always()
@@ -88,4 +93,7 @@ jobs:
           fi
 
           echo "Deploying frontend to $BUCKET..."
+          cd frontend
+          npm install
+          npm run build
           aws s3 sync frontend/dist s3://$BUCKET --delete
