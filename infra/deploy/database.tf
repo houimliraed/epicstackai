@@ -33,7 +33,7 @@ resource "aws_db_instance" "main" {
   username                   = var.db_username
   password                   = var.db_password
   skip_final_snapshot        = true
-  db_subnet_group_name       = aws_db_subnet_group.main[0].name
+  db_subnet_group_name       = aws_db_subnet_group.main.name  # <- remove [0]
   multi_az                   = false
   backup_retention_period    = 0
   vpc_security_group_ids     = [aws_security_group.rds.id]
@@ -42,3 +42,4 @@ resource "aws_db_instance" "main" {
     Name = "${local.prefix}-main"
   }
 }
+
