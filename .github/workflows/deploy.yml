@@ -29,6 +29,7 @@ jobs:
               env:
                 AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
                 AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                
               run: |
                 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
                 docker build -t ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA frontend/
@@ -40,14 +41,15 @@ jobs:
               env:
                 AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
                 AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
               run: |
                 export TF_VAR_ecr_front_image="${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA"
-                export TF_VAR_ecr_front_image="${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA"
+                export TF_VAR_ecr_back_image="${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA"
                 workspace=$(cat .workspace)
                 cd infra/
                 docker compose run --rm terraform -chdir=deploy/ init 
                 docker compose run --rm terraform -chdir=deploy/ workspace select -or-create $workspace
-                docker compose run --rm terraform -chdir=deploy/ apply -auto-approve
+                docker compose run --rm terraform -chdir=deploy/ apply -auto-approve -input=false
             
             # - name: Deploy Frontend to S3
             #   env:
