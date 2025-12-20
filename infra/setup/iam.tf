@@ -199,3 +199,29 @@ resource "aws_iam_user_policy_attachment" "rds" {
   user       = aws_iam_user.cd.name
   policy_arn = aws_iam_policy.rds.arn
 }
+
+#############################
+# Policy for IAM service-linked role (for RDS)
+#############################
+
+data "aws_iam_policy_document" "rds_service_linked" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "iam:CreateServiceLinkedRole",
+      "iam:PassRole"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "rds_service_linked" {
+  name        = "${aws_iam_user.cd.name}-rds-service-linked"
+  description = "Allow creating required IAM service linked roles for RDS."
+  policy      = data.aws_iam_policy_document.rds_service_linked.json
+}
+
+resource "aws_iam_user_policy_attachment" "rds_service_linked" {
+  user       = aws_iam_user.cd.name
+  policy_arn = aws_iam_policy.rds_service_linked.arn
+}
