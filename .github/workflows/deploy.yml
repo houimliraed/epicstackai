@@ -25,6 +25,7 @@ jobs:
           else
             echo "staging" > .workspace
           fi
+          cat .workspace
 
       - name: Push Docker images to ECR
         env:
@@ -45,7 +46,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
         run: |
-          workspace=$(cat .workspace)
+          workspace=$(cat .workspace || echo "staging")
+          echo "Using workspace: $workspace"
+          export TF_WORKSPACE=$workspace
           cd infra/
 
           # Terraform init
@@ -53,7 +56,7 @@ jobs:
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-
+            -e TF_WORKSPACE=$TF_WORKSPACE \
             terraform -chdir=deploy/ init
 
           # Select or create workspace
@@ -61,7 +64,7 @@ jobs:
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-
+            -e TF_WORKSPACE=$TF_WORKSPACE \
             terraform -chdir=deploy/ workspace select -or-create $workspace
 
           # Apply infrastructure
@@ -69,15 +72,15 @@ jobs:
             -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
             -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
             -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
-
+            -e TF_WORKSPACE=$TF_WORKSPACE \
             terraform -chdir=deploy/ apply -auto-approve -input=false
+
       - name: Build Frontend
         run: |
           cd frontend
           npm install
           npm run build
- 
-      # Optional: Deploy frontend to S3
+
       - name: Deploy Frontend to S3
         if: always()
         env:
@@ -85,13 +88,20 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          WORKSPACE=$(cat .workspace)
+          WORKSPACE=$(cat .workspace || echo "staging")
+          echo "Deploying frontend for workspace: $WORKSPACE"
+
+          cd frontend
           if [ "$WORKSPACE" = "prod" ]; then
             BUCKET="epicstack-front"
           else
             BUCKET="epicstack-front-staging"
           fi
 
-          echo "Deploying frontend to $BUCKET..."
-          cd $GITHUB_WORKSPACE
-          aws s3 sync frontend/dist s3://$BUCKET --delete
+          if [ -d dist ]; then
+            echo "Syncing dist to S3 bucket: $BUCKET"
+            aws s3 sync dist s3://$BUCKET --delete
+          else
+            echo "Error: dist folder does not exist! Build failed?"
+            exit 1
+          fi
