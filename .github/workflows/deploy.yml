@@ -29,6 +29,7 @@ jobs:
               env:
                 AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
                 AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
                 
               run: |
                 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
