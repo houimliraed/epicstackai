@@ -10,3 +10,11 @@ variable "Contact" {
   description = "Contact for tagging resouces in AWS"
   default     = "houimliraed@engineergrid.com"
 }
+variable "db_username" {
+  description = "username for epicstack app api database"
+  default     = "epicstack"
+
+}
+variable "db_password" {
+  description = "password for the terraform database"
+}
