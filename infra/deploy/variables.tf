@@ -17,5 +17,5 @@ variable "db_username" {
 }
 variable "db_password" {
   description = "password for the terraform database"
-  default = "WhateverYouWantButMakeSureItsSecure123!"
+  default     = "WhateverYouWantButMakeSureItsSecure123!"
 }
