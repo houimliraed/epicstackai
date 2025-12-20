@@ -1,14 +1,14 @@
 
 
 resource "aws_db_subnet_group" "main" {
+  count      = length([for g in aws_db_subnet_group.main : g if g == null]) > 0 ? 1 : 0
   name       = "${var.prefix}-main"
   subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-
-  tags = {
-    Name = "${var.prefix}-db-subnet-group"
-  }
-
+  tags = { Name = "${var.prefix}-db-subnet-group" }
 }
+
+
+
 resource "aws_security_group" "rds" {
   description = "Allow access to RDS instances"
   name        = "${var.prefix}-rds-inbound-access"

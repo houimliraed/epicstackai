@@ -1,6 +1,6 @@
-
-
-# creating the iam user and policies for deployement account
+########################################
+# IAM User for Deployment
+########################################
 
 resource "aws_iam_user" "cd" {
   name = "saas-pme-cd"
@@ -10,7 +10,9 @@ resource "aws_iam_access_key" "cd" {
   user = aws_iam_user.cd.name
 }
 
-# policy document for terraform backend access
+########################################
+# Terraform Backend Access (S3)
+########################################
 
 data "aws_iam_policy_document" "backend_s3" {
   statement {
@@ -22,29 +24,25 @@ data "aws_iam_policy_document" "backend_s3" {
     effect  = "Allow"
     actions = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
     resources = [
-      "arn:aws:s3:::${var.tf-state-bucket}/tf-state-deploy/*",
-      "arn:aws:s3:::${var.tf-state-bucket}/tf-state-deploy",
-      "arn:aws:s3:::${var.tf-state-bucket}/tf-state-deploy-env",
-      "arn:aws:s3:::${var.tf-state-bucket}/tf-state-deploy-env/*"
+      "arn:aws:s3:::${var.tf-state-bucket}/*"
     ]
   }
 }
+
 resource "aws_iam_policy" "tf_backend" {
-
   name        = "${aws_iam_user.cd.id}-tf-s3"
-  description = "Allow cd user to access S3 for terraform backend ressources"
+  description = "Allow CD user to access S3 for Terraform backend"
   policy      = data.aws_iam_policy_document.backend_s3.json
-
 }
 
 resource "aws_iam_user_policy_attachment" "tf_backend" {
-
   user       = aws_iam_user.cd.name
   policy_arn = aws_iam_policy.tf_backend.arn
-
 }
 
-### iam for ecrr
+########################################
+# ECR Permissions
+########################################
 
 data "aws_iam_policy_document" "ecr" {
   statement {
@@ -52,9 +50,8 @@ data "aws_iam_policy_document" "ecr" {
     actions   = ["ecr:GetAuthorizationToken"]
     resources = ["*"]
   }
-
   statement {
-    effect = "Allow"
+    effect  = "Allow"
     actions = [
       "ecr:CompleteLayerUpload",
       "ecr:UploadLayerPart",
@@ -62,7 +59,9 @@ data "aws_iam_policy_document" "ecr" {
       "ecr:BatchCheckLayerAvailability",
       "ecr:PutImage",
       "ecr:BatchGetImage",
-      "ecr:GetDownloadUrlForLayer"
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:DescribeRepositories",
+      "ecr:ListImages"
     ]
     resources = [
       aws_ecr_repository.front.arn,
@@ -82,50 +81,58 @@ resource "aws_iam_user_policy_attachment" "ecr" {
   policy_arn = aws_iam_policy.ecr.arn
 }
 
-#########################
-# Policy for EC2 access #
-#########################
+########################################
+# S3 & CloudFront Permissions
+########################################
+
+data "aws_iam_policy_document" "s3_cloudfront" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:CreateBucket",
+      "s3:DeleteBucket",
+      "s3:ListBucket",
+      "s3:GetBucketLocation",
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject"
+    ]
+    resources = ["*"]
+  }
+  statement {
+    effect = "Allow"
+    actions = [
+      "cloudfront:CreateDistribution",
+      "cloudfront:UpdateDistribution",
+      "cloudfront:GetDistribution",
+      "cloudfront:ListDistributions",
+      "cloudfront:CreateInvalidation",
+      "cloudfront:GetInvalidation"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "s3_cloudfront" {
+  name        = "${aws_iam_user.cd.name}-s3-cloudfront"
+  description = "Allow S3 and CloudFront management"
+  policy      = data.aws_iam_policy_document.s3_cloudfront.json
+}
+
+resource "aws_iam_user_policy_attachment" "s3_cloudfront" {
+  user       = aws_iam_user.cd.name
+  policy_arn = aws_iam_policy.s3_cloudfront.arn
+}
+
+########################################
+# EC2 Permissions
+########################################
 
 data "aws_iam_policy_document" "ec2" {
   statement {
     effect = "Allow"
     actions = [
-      "ec2:DescribeVpcs",
-      "ec2:CreateTags",
-      "ec2:CreateVpc",
-      "ec2:DeleteVpc",
-      "ec2:DescribeSecurityGroups",
-      "ec2:DeleteSubnet",
-      "ec2:DeleteSecurityGroup",
-      "ec2:DescribeNetworkInterfaces",
-      "ec2:DetachInternetGateway",
-      "ec2:DescribeInternetGateways",
-      "ec2:DeleteInternetGateway",
-      "ec2:DetachNetworkInterface",
-      "ec2:DescribeVpcEndpoints",
-      "ec2:DescribeRouteTables",
-      "ec2:DeleteRouteTable",
-      "ec2:DeleteVpcEndpoints",
-      "ec2:DisassociateRouteTable",
-      "ec2:DeleteRoute",
-      "ec2:DescribePrefixLists",
-      "ec2:DescribeSubnets",
-      "ec2:DescribeVpcAttribute",
-      "ec2:DescribeNetworkAcls",
-      "ec2:AssociateRouteTable",
-      "ec2:AuthorizeSecurityGroupIngress",
-      "ec2:RevokeSecurityGroupEgress",
-      "ec2:CreateSecurityGroup",
-      "ec2:AuthorizeSecurityGroupEgress",
-      "ec2:CreateVpcEndpoint",
-      "ec2:ModifySubnetAttribute",
-      "ec2:CreateSubnet",
-      "ec2:CreateRoute",
-      "ec2:CreateRouteTable",
-      "ec2:CreateInternetGateway",
-      "ec2:AttachInternetGateway",
-      "ec2:ModifyVpcAttribute",
-      "ec2:RevokeSecurityGroupIngress",
+      "ec2:*"
     ]
     resources = ["*"]
   }
@@ -133,7 +140,7 @@ data "aws_iam_policy_document" "ec2" {
 
 resource "aws_iam_policy" "ec2" {
   name        = "${aws_iam_user.cd.name}-ec2"
-  description = "Allow user to manage EC2 resources."
+  description = "Allow user to manage EC2 resources"
   policy      = data.aws_iam_policy_document.ec2.json
 }
 
@@ -142,50 +149,15 @@ resource "aws_iam_user_policy_attachment" "ec2" {
   policy_arn = aws_iam_policy.ec2.arn
 }
 
-#############################
-# Policy CloudFront
-#############################
-
-data "aws_iam_policy_document" "cloudfront" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "cloudfront:CreateInvalidation",
-      "cloudfront:GetDistribution",
-      "cloudfront:ListDistributions"
-    ]
-    resources = ["*"]
-  }
-
-}
-resource "aws_iam_policy" "cloudfront" {
-  name        = "${aws_iam_user.cd.name}-cloudfront"
-  description = "Allow user to manage CloudFront resources."
-  policy      = data.aws_iam_policy_document.cloudfront.json
-}
-resource "aws_iam_user_policy_attachment" "cloudfront" {
-  user       = aws_iam_user.cd.name
-  policy_arn = aws_iam_policy.cloudfront.arn
-}
-
-
-#########################
-# Policy for RDS access #
-#########################
+########################################
+# RDS Permissions
+########################################
 
 data "aws_iam_policy_document" "rds" {
   statement {
     effect = "Allow"
     actions = [
-      "rds:AddTagsToResource",
-      "rds:DescribeDBSubnetGroups",
-      "rds:DescribeDBInstances",
-      "rds:CreateDBSubnetGroup",
-      "rds:DeleteDBSubnetGroup",
-      "rds:CreateDBInstance",
-      "rds:DeleteDBInstance",
-      "rds:ListTagsForResource",
-      "rds:ModifyDBInstance"
+      "rds:*"
     ]
     resources = ["*"]
   }
@@ -193,7 +165,7 @@ data "aws_iam_policy_document" "rds" {
 
 resource "aws_iam_policy" "rds" {
   name        = "${aws_iam_user.cd.name}-rds"
-  description = "Allow user to manage RDS resources."
+  description = "Allow user to manage RDS resources"
   policy      = data.aws_iam_policy_document.rds.json
 }
 
@@ -202,54 +174,15 @@ resource "aws_iam_user_policy_attachment" "rds" {
   policy_arn = aws_iam_policy.rds.arn
 }
 
-#############################
-# Policy for IAM service-linked role (for RDS)
-#############################
-
-data "aws_iam_policy_document" "rds_service_linked" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "iam:CreateServiceLinkedRole",
-      "iam:PassRole"
-    ]
-    resources = ["*"]
-  }
-}
-
-
-resource "aws_iam_policy" "rds_service_linked" {
-  name        = "${aws_iam_user.cd.name}-rds-service-linked"
-  description = "Allow creating required IAM service linked roles for RDS."
-  policy      = data.aws_iam_policy_document.rds_service_linked.json
-}
-
-resource "aws_iam_user_policy_attachment" "rds_service_linked" {
-  user       = aws_iam_user.cd.name
-  policy_arn = aws_iam_policy.rds_service_linked.arn
-}
-
-
-#########################
-# Policy for ECS access #
-#########################
+########################################
+# ECS Permissions
+########################################
 
 data "aws_iam_policy_document" "ecs" {
   statement {
     effect = "Allow"
     actions = [
-      "ecs:DescribeClusters",
-      "ecs:DeregisterTaskDefinition",
-      "ecs:DeleteCluster",
-      "ecs:DescribeServices",
-      "ecs:UpdateService",
-      "ecs:DeleteService",
-      "ecs:DescribeTaskDefinition",
-      "ecs:CreateService",
-      "ecs:RegisterTaskDefinition",
-      "ecs:CreateCluster",
-      "ecs:UpdateCluster",
-      "ecs:TagResource",
+      "ecs:*"
     ]
     resources = ["*"]
   }
@@ -257,7 +190,7 @@ data "aws_iam_policy_document" "ecs" {
 
 resource "aws_iam_policy" "ecs" {
   name        = "${aws_iam_user.cd.name}-ecs"
-  description = "Allow user to manage ECS resources."
+  description = "Allow user to manage ECS resources"
   policy      = data.aws_iam_policy_document.ecs.json
 }
 
@@ -266,30 +199,15 @@ resource "aws_iam_user_policy_attachment" "ecs" {
   policy_arn = aws_iam_policy.ecs.arn
 }
 
-#########################
-# Policy for IAM access #
-#########################
+########################################
+# IAM Permissions
+########################################
 
 data "aws_iam_policy_document" "iam" {
   statement {
     effect = "Allow"
     actions = [
-      "iam:ListInstanceProfilesForRole",
-      "iam:ListAttachedRolePolicies",
-      "iam:DeleteRole",
-      "iam:ListPolicyVersions",
-      "iam:DeletePolicy",
-      "iam:DetachRolePolicy",
-      "iam:ListRolePolicies",
-      "iam:GetRole",
-      "iam:GetPolicyVersion",
-      "iam:GetPolicy",
-      "iam:CreateRole",
-      "iam:CreatePolicy",
-      "iam:AttachRolePolicy",
-      "iam:TagRole",
-      "iam:TagPolicy",
-      "iam:PassRole"
+      "iam:*"
     ]
     resources = ["*"]
   }
@@ -297,7 +215,7 @@ data "aws_iam_policy_document" "iam" {
 
 resource "aws_iam_policy" "iam" {
   name        = "${aws_iam_user.cd.name}-iam"
-  description = "Allow user to manage IAM resources."
+  description = "Allow user to manage IAM resources"
   policy      = data.aws_iam_policy_document.iam.json
 }
 
@@ -306,19 +224,15 @@ resource "aws_iam_user_policy_attachment" "iam" {
   policy_arn = aws_iam_policy.iam.arn
 }
 
-################################
-# Policy for CloudWatch access #
-################################
+########################################
+# CloudWatch Permissions
+########################################
 
 data "aws_iam_policy_document" "logs" {
   statement {
     effect = "Allow"
     actions = [
-      "logs:DeleteLogGroup",
-      "logs:DescribeLogGroups",
-      "logs:CreateLogGroup",
-      "logs:TagResource",
-      "logs:ListTagsLogGroup"
+      "logs:*"
     ]
     resources = ["*"]
   }
@@ -326,7 +240,7 @@ data "aws_iam_policy_document" "logs" {
 
 resource "aws_iam_policy" "logs" {
   name        = "${aws_iam_user.cd.name}-logs"
-  description = "Allow user to manage CloudWatch resources."
+  description = "Allow user to manage CloudWatch"
   policy      = data.aws_iam_policy_document.logs.json
 }
 
