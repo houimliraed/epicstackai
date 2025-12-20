@@ -45,14 +45,26 @@ jobs:
                 TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
                 
               run: |
-                export TF_VAR_DB_PASSWORD="${TF_VAR_DB_PASSWORD}"
-                export TF_VAR_ecr_front_image="${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA"
-                export TF_VAR_ecr_back_image="${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA"
                 workspace=$(cat .workspace)
                 cd infra/
-                docker compose run --rm terraform -chdir=deploy/ init
-                docker compose run --rm terraform -chdir=deploy/ workspace select -or-create $workspace
-                docker compose run --rm terraform -chdir=deploy/ apply -auto-approve -input=false
+                # Pass TF_VAR_DB_PASSWORD and AWS vars into the container with -e
+                docker compose run --rm \
+                  -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                  -e TF_VAR_DB_PASSWORD=${{ secrets.TF_VAR_DB_PASSWORD }} \
+                  terraform -chdir=deploy/ init
+
+                docker compose run --rm \
+                  -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                  -e TF_VAR_DB_PASSWORD=${{ secrets.TF_VAR_DB_PASSWORD }} \
+                  terraform -chdir=deploy/ workspace select -or-create $workspace
+
+                docker compose run --rm \
+                  -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+                  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+                  -e TF_VAR_DB_PASSWORD=${{ secrets.TF_VAR_DB_PASSWORD }} \
+                  terraform -chdir=deploy/ apply -auto-approve -input=false
             
             # - name: Deploy Frontend to S3
             #   env:
