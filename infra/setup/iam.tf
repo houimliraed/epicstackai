@@ -141,46 +141,60 @@ resource "aws_iam_user_policy_attachment" "ec2" {
 }
 
 #############################
-# Policy for S3 + CloudFront
+# Policy CloudFront
 #############################
 
-data "aws_iam_policy_document" "s3_cloudfront" {
-
-  # Allow uploading frontend build to S3
-  statement {
-    effect = "Allow"
-    actions = [
-      "s3:PutObject",
-      "s3:DeleteObject",
-      "s3:GetObject",
-      "s3:ListBucket"
-    ]
-    resources = [
-      "arn:aws:s3:::YOUR_BUCKET_NAME",
-      "arn:aws:s3:::YOUR_BUCKET_NAME/*"
-    ]
-  }
-
-  # Allow CloudFront cache invalidation on deploy
+data "aws_iam_policy_document" "cloudfront" {
   statement {
     effect = "Allow"
     actions = [
       "cloudfront:CreateInvalidation",
       "cloudfront:GetDistribution",
-      "cloudfront:GetDistributionConfig",
       "cloudfront:ListDistributions"
+    ]
+    resources = ["*"]
+  }
+
+}
+resource "aws_iam_policy" "cloudfront" {
+  name        = "${aws_iam_user.cd.name}-cloudfront"
+  description = "Allow user to manage CloudFront resources."
+  policy      = data.aws_iam_policy_document.cloudfront.json
+}
+resource "aws_iam_user_policy_attachment" "cloudfront" {
+  user       = aws_iam_user.cd.name
+  policy_arn = aws_iam_policy.cloudfront.arn
+}
+
+
+#########################
+# Policy for RDS access #
+#########################
+
+data "aws_iam_policy_document" "rds" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "rds:DescribeDBSubnetGroups",
+      "rds:DescribeDBInstances",
+      "rds:CreateDBSubnetGroup",
+      "rds:DeleteDBSubnetGroup",
+      "rds:CreateDBInstance",
+      "rds:DeleteDBInstance",
+      "rds:ListTagsForResource",
+      "rds:ModifyDBInstance"
     ]
     resources = ["*"]
   }
 }
 
-resource "aws_iam_policy" "s3_cloudfront" {
-  name        = "${aws_iam_user.cd.name}-s3-cloudfront"
-  description = "Allow CD user to deploy frontend: upload to S3 + invalidate CloudFront"
-  policy      = data.aws_iam_policy_document.s3_cloudfront.json
+resource "aws_iam_policy" "rds" {
+  name        = "${aws_iam_user.cd.name}-rds"
+  description = "Allow user to manage RDS resources."
+  policy      = data.aws_iam_policy_document.rds.json
 }
 
-resource "aws_iam_user_policy_attachment" "s3_cloudfront" {
+resource "aws_iam_user_policy_attachment" "rds" {
   user       = aws_iam_user.cd.name
-  policy_arn = aws_iam_policy.s3_cloudfront.arn
+  policy_arn = aws_iam_policy.rds.arn
 }
