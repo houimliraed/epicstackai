@@ -1,86 +1,91 @@
+name: Deploy
 
-name: deploy
 on:
-    push:
-        branches:
-            - main
-            - prod
-
-
+  push:
+    branches:
+      - main
+      - prod
 
 jobs:
-    Test-Lint:
-        uses: ./.github/workflows/Test-Lint.yml
-    Deploy:
-        name: deploy
-        runs-on: ubuntu-latest
-        needs: [Test-Lint]
-        steps:
-            - name: checkout
-              uses: actions/checkout@v6
-            - name: set vars
-              run: |
-                if [[ $GITHUB_REF == 'refs/heads/prod' ]]; then
-                  echo "prod" > .workspace
-                else
-                  echo "staging" > .workspace
-                fi
-            - name: Push to ECR
-              env:
-                AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
-                AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
-                
-              run: |
-                aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
-                docker build -t ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA frontend/
-                docker build -t ${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA backend/
-                docker push ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA 
-                docker push ${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA 
+  Test-Lint:
+    uses: ./.github/workflows/Test-Lint.yml
 
-            - name: Terraform Apply
-              env:
-                AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
-                AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-                TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
-                
-              run: |
-                workspace=$(cat .workspace)
-                cd infra/
-                # Pass TF_VAR_DB_PASSWORD and AWS vars into the container with -e
-                docker compose run --rm \
-                  -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-                  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                  -e TF_VAR_DB_PASSWORD="$TF_VAR_DB_PASSWORD" \
-                  terraform -chdir=deploy/ init
+  Deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: [Test-Lint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
 
-                docker compose run --rm \
-                  -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-                  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                  -e TF_VAR_DB_PASSWORD="$TF_VAR_DB_PASSWORD" \
-                  terraform -chdir=deploy/ workspace select -or-create $workspace
+      - name: Set workspace
+        run: |
+          if [[ $GITHUB_REF == 'refs/heads/prod' ]]; then
+            echo "prod" > .workspace
+          else
+            echo "staging" > .workspace
+          fi
 
-                docker compose run --rm \
-                  -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
-                  -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-                  -e TF_VAR_DB_PASSWORD="$TF_VAR_DB_PASSWORD" \
-                  terraform -chdir=deploy/ apply -auto-approve -input=false
-            
-            # - name: Deploy Frontend to S3
-            #   env:
-            #    AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
-            #    AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            #    AWS_DEFAULT_REGION: us-east-1
-            #   run: |
-            #     WORKSPACE=$(cat .workspace)
-            #     if [ "$WORKSPACE" = "prod" ]; then
-            #       BUCKET="epicstack-front"
-            #     else
-            #       BUCKET="epicstack-front-staging"
-            #     fi
+      - name: Push Docker images to ECR
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com
+          docker build -t ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA frontend/
+          docker build -t ${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA backend/
+          docker push ${{ vars.ECR_REPO_FRONT }}:$GITHUB_SHA
+          docker push ${{ vars.ECR_REPO_BACK }}:$GITHUB_SHA
 
-            #     echo "Deploying frontend to $BUCKET..."
-            #     aws s3 sync frontend/build s3://$BUCKET --delete
+      - name: Terraform Init, Workspace & Apply
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TF_VAR_DB_PASSWORD: ${{ secrets.TF_VAR_DB_PASSWORD }}
+        run: |
+          workspace=$(cat .workspace)
+          cd infra/
 
+          # Terraform init
+          docker compose run --rm \
+            -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+            -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+            -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
+            -e TF_WORKSPACE=$workspace \
+            terraform -chdir=deploy/ init
 
-              
+          # Select or create workspace
+          docker compose run --rm \
+            -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+            -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+            -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
+            -e TF_WORKSPACE=$workspace \
+            terraform -chdir=deploy/ workspace select -or-create $workspace
+
+          # Apply infrastructure
+          docker compose run --rm \
+            -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+            -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
+            -e TF_VAR_DB_PASSWORD=$TF_VAR_DB_PASSWORD \
+            -e TF_WORKSPACE=$workspace \
+            terraform -chdir=deploy/ apply -auto-approve -input=false
+
+      # Optional: Deploy frontend to S3
+      - name: Deploy Frontend to S3
+        if: always()
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          WORKSPACE=$(cat .workspace)
+          if [ "$WORKSPACE" = "prod" ]; then
+            BUCKET="epicstack-front"
+          else
+            BUCKET="epicstack-front-staging"
+          fi
+
+          echo "Deploying frontend to $BUCKET..."
+          aws s3 sync frontend/dist s3://$BUCKET --delete
